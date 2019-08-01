@@ -1,0 +1,19 @@
+{
+    "Instance":{
+        "Count":4,
+        "IsUseTimePriority":true,
+        "Images":[
+            "heterogeneous_go:v1.0.0",
+            "heterogeneous_python:v1.0.0",
+            "heterogeneous_java:v1.0.0",
+            "heterogeneous_cpp:v1.0.0"
+        ]
+    },
+
+    "ExceptionRule":{
+        "Threshold":70,
+        "MaxFailures":1,
+        "RestartImage":"random"
+    }
+}
+

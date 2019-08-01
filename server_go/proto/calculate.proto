@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package proto;
+
+service Calculate {
+    rpc Add(AddRequest) returns (AddResponse);
+}
+
+message AddRequest {
+    int32 a = 1;
+    int32 b = 2;
+}
+
+message AddResponse {
+    enum ServerType {
+        INVALID = 0;
+        GOLANG  = 1;
+        PYTHON  = 2;
+        JAVA    = 3;
+        CPP     = 4;
+    }
+
+    message ServerId {
+        uint32 id = 1;
+    }
+
+    int32 result = 1;
+    ServerType server_type = 2;
+    ServerId server_id = 3;
+}
+
+
