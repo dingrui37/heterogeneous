@@ -15,9 +15,11 @@ type ImagePool struct {
 }
 
 type Container struct {
-	ID string
-	Image string
-	SuccCount uint32
+	ID string                       //容器ID
+	Image string                    //镜像名称
+	SuccCount uint32                //成功的次数
+	ContinuousFailureCount uint32   //连续失败的次数
+	TotalFailureCount uint32        //累计失败的次数
 }
 
 type Scheduler struct {

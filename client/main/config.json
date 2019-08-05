@@ -7,6 +7,13 @@
             "heterogeneous_python:v1.0.0",
             "heterogeneous_java:v1.0.0",
             "heterogeneous_cpp:v1.0.0"
+        ],
+
+        "Ports":[
+            50051,
+            50052,
+            50053,
+            50054
         ]
     },
 

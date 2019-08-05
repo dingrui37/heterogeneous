@@ -8,15 +8,14 @@ import (
 	"context"
 	"log"
 	"time"
-	"google.golang.org/grpc"
-	pb "heterogeneous/proto"
 	"heterogeneous/scheduler"
 )
 
 type InstanceT struct {
 	Count uint32
 	IsUseTimePriority bool
-    Images []string
+	Images []string
+	Ports []uint32
 }
 
 type ExceptionRuleT struct {
@@ -30,12 +29,9 @@ type ConfigInfo struct {
 	ExceptionRule *ExceptionRuleT
 }
 
-var Servers = []string {"localhost:50051" , "localhost:50052"}
-
 var (
 	cfgFile string
 )
-
 
 func init() {
 	flag.StringVar(&cfgFile, "c", "", "Config file")
@@ -57,7 +53,6 @@ func parseConfig(file string, v interface{}) {
 	}
 }
 
-
 func main() {
 	flag.Parse()
 
@@ -76,23 +71,7 @@ func main() {
 	s.ContanierRemove(s.Containers[0].ID)
 	s.ContanierRemove(s.Containers[0].ID)
 	fmt.Println("dddddd")
-	// c := make(chan *pb.AddResponse, 2)
-	
-	// //并发执行RPC调用
-	// for _, addr := range Servers {
-	// 	go func(addr string) {
-	// 		Add(addr, c)
-	// 	}(addr)
-	// }
 
-	// // 从channel中读取RPC的结果
-	// for i := 0; i < 2; i++ {
-	// 	select {
-	// 	case msg := <- c:
-	// 		log.Printf("Receive result from channel: %v, %v,%v", 
-	// 			msg.Result, msg.ServerType, msg.ServerId)
-	// 	}
-	// }
 	
 }
 
