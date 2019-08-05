@@ -1,6 +1,7 @@
 package arbitrator
 
 import (
+	"sync"
 	"strings"
 	"math/rand"
 	"time"
@@ -37,6 +38,8 @@ type Statistics struct {
 	count uint32
 	indexs []int
 }
+
+var once sync.Once
 
 //裁决器裁决部分的算法是通用的，针对所有RPC
 func (a *Arbitrator) arbitrate(elements []*Element) (int, error) {
@@ -98,6 +101,21 @@ func (a *Arbitrator) arbitrate(elements []*Element) (int, error) {
 				if !isExisted {
 					c.TotalFailureCount++          //累计失败次数
 					c.ContinuousFailureCount++	   //连续失败次数++				
+				}
+			}
+
+			for _, c := range a.Scheduler.Containers {
+				if c.ContinuousFailureCount >= a.Policy.MaxFailures {
+					if err := a.Scheduler.ContanierRemove(c.ID); err != nil {
+						log.Printf("Remove container failed, reason:%s", err)
+					}
+
+					log.Printf(`Container:%v be removed, Image:%v, 
+								ServiceAddress:%v, SuccCount:%v, 
+								ContinuousFailureCount:%v, TotalFailureCount:%v`, 
+								c.ID, c.Image, 
+								c.ServiceAddress, c.SuccCount, 
+								c.ContinuousFailureCount, c.TotalFailureCount)
 				}
 			}
 			return keys[key].indexs[0], nil
@@ -183,15 +201,19 @@ func (a *Arbitrator) Init() {
 }
 
 func NewArbitrator(images []string, servers []string, Policy *ArbitratePolicy) *Arbitrator {
-	return &Arbitrator{
-		Scheduler:&scheduler.Scheduler {
-			Pool:&scheduler.ImagePool{
-				WorkableImages:images,
-				ExceptionImages:make([]string, 0),
+	var a *Arbitrator
+	once.Do(func(){ //单例模式
+		a = &Arbitrator{
+			Scheduler:&scheduler.Scheduler {
+				Pool:&scheduler.ImagePool{
+					WorkableImages:images,
+					ExceptionImages:make([]string, 0),
+				},
+				Containers:make([]*scheduler.Container, 0),
 			},
-			Containers:make([]*scheduler.Container, 0),
-		},
-		Servers:servers,
-	}
+			Servers:servers,
+		}
+	})
+	return a
 }
 

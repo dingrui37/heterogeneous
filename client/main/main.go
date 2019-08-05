@@ -4,10 +4,6 @@ import (
 	"log"
 	"flag"
 	"heterogeneous/arbitrator"
-	// "google.golang.org/grpc"
-	// pb "heterogeneous/proto"
-	// "context"
-	// "time"
 )
 
 var (
@@ -42,7 +38,7 @@ func main() {
 
 	//RPC调用
 	if r, err := a.Add(1, 2); err != nil {
-		log.Println("Add rpc failed")
+		log.Println("Call add RPC failed")
 	} else {
 		log.Println("result = ", r)
 	}
