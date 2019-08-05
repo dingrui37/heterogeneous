@@ -17,6 +17,7 @@ type ImagePool struct {
 type Container struct {
 	ID string                       //容器ID
 	Image string                    //镜像名称
+	ServiceAddress string 		    //服务地址 IP：Port
 	SuccCount uint32                //成功的次数
 	ContinuousFailureCount uint32   //连续失败的次数
 	TotalFailureCount uint32        //累计失败的次数
@@ -55,6 +56,7 @@ func (s *Scheduler) ContainerCreate(image, port, protocol string) error {
 			ExposedPorts: nat.PortSet{
 				portProto : struct{}{},
 			},
+			Cmd:[]string{"-p", port},
 		}, 
 
 		&container.HostConfig{
@@ -79,10 +81,8 @@ func (s *Scheduler) ContainerCreate(image, port, protocol string) error {
 	s.Containers = append(s.Containers, &Container{
 		ID: resp.ID,
 		Image: image,
-		SuccCount: 0,
+		ServiceAddress: "0.0.0.0" + port,
 	})
-
-	fmt.Printf("Containers = %v\n", len(s.Containers))
 
 	return nil
 } 
@@ -110,4 +110,14 @@ func (s *Scheduler) ContanierRemove(containerID string) error {
 	}
 
 	return nil
+}
+
+func NewScheduler(images []string) *Scheduler {
+	return &Scheduler {
+		Pool:&ImagePool{
+			WorkableImages:images,
+			ExceptionImages:make([]string, 0),
+		},
+		Containers:make([]*Container, 0),
+	}
 }

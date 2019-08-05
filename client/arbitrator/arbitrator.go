@@ -1,6 +1,8 @@
 package arbitrator
 
 import (
+	"strings"
+	"math/rand"
 	"time"
 	"fmt"
 	"log"
@@ -113,20 +115,21 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
 	for _, addr := range a.Servers {
 		go func(address string) {
 			log.Printf("connect to %v", address)
+
 			conn, err := grpc.Dial(address, grpc.WithInsecure())
 			if err != nil {
 				log.Printf("cann not connect: %v", err)
 				return
 			}
 			defer conn.Close()
-			
+
 			c := pb.NewCalculateClient(conn)
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second) //每次RPC超时时间设置为1s
+			ctx, cancel := context.WithTimeout(context.Background(), 2 * time.Second) //每次RPC超时时间设置为1s
 			defer cancel()
 			
-			r, err := c.Add(ctx, &pb.AddRequest{A: param1, B: param2})
+			r, err := c.Add(ctx, &pb.AddRequest{A: param1, B: param2}, grpc.WaitForReady(true))
 			if err != nil {
-				log.Printf("could not execut add RPC: %v", err)
+				log.Printf("could not execut add RPC: %v", err)//todo 失败是否进行retry待讨论
 				return
 			}
 		
@@ -166,8 +169,29 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
 	return elements[index].Value.(int32), nil
 }
 
-func NewArbitrator(images []string, servers []string, ) {
-	// Scheduler *scheduler.Scheduler   //调度器
-	// Servers []string                 //服务端信息
-	// Policy	ArbitratePolicy         //裁决策略信息
+func (a *Arbitrator) Init() {
+	for _, s := range a.Servers {
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		i := r.Intn(len(a.Scheduler.Pool.WorkableImages))
+		image := a.Scheduler.Pool.WorkableImages[i]
+		port := strings.Split(s, ":")[1]
+		if err := a.Scheduler.ContainerCreate(image, port, "tcp"); err != nil {
+			log.Fatalf("Cannot create container, image: %v, port: %v, reason:%v\n", 
+				image, port, err)
+		}
+	}
 }
+
+func NewArbitrator(images []string, servers []string, Policy *ArbitratePolicy) *Arbitrator {
+	return &Arbitrator{
+		Scheduler:&scheduler.Scheduler {
+			Pool:&scheduler.ImagePool{
+				WorkableImages:images,
+				ExceptionImages:make([]string, 0),
+			},
+			Containers:make([]*scheduler.Container, 0),
+		},
+		Servers:servers,
+	}
+}
+
