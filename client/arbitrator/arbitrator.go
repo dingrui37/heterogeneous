@@ -127,9 +127,9 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2 * time.Second) //每次RPC超时时间设置为1s
 			defer cancel()
 			
-			r, err := c.Add(ctx, &pb.AddRequest{A: param1, B: param2}, grpc.WaitForReady(true))
+			r, err := c.Add(ctx, &pb.AddRequest{A: param1, B: param2}, grpc.WaitForReady(true)) //配置WaitForReady，如果失败grpc会多次retry直至超时
 			if err != nil {
-				log.Printf("could not execut add RPC: %v", err)//todo 失败是否进行retry待讨论
+				log.Printf("could not execut add RPC: %v", err)
 				return
 			}
 		

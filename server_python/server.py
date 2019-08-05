@@ -1,13 +1,18 @@
 from concurrent import futures
 import time
+import argparse
 import logging
-
+import socket
 import grpc
 
 import calculate_pb2
 import calculate_pb2_grpc
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-p", "--port", help="Server listen port")
+args = parser.parse_args()
 
 class Calculator(calculate_pb2_grpc.CalculateServicer):
     def Add(self, request, context):
@@ -16,14 +21,14 @@ class Calculator(calculate_pb2_grpc.CalculateServicer):
         response.result = request.a + request.b
         response.server_type = calculate_pb2.AddResponse.ServerType.PYTHON
         server_id = calculate_pb2.AddResponse.ServerId()
-        server_id.id = 2
+        server_id.id = socket.gethostname()
         response.server_id.CopyFrom(server_id)
         return response
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     calculate_pb2_grpc.add_CalculateServicer_to_server(Calculator(), server)
-    server.add_insecure_port('[::]:50052')
+    server.add_insecure_port('[::]:' + args.port)
     server.start()
     try:
         while True:

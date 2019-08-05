@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='proto',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0f\x63\x61lculate.proto\x12\x05proto\"\"\n\nAddRequest\x12\t\n\x01\x61\x18\x01 \x01(\x05\x12\t\n\x01\x62\x18\x02 \x01(\x05\"\xdf\x01\n\x0b\x41\x64\x64Response\x12\x0e\n\x06result\x18\x01 \x01(\x05\x12\x32\n\x0bserver_type\x18\x02 \x01(\x0e\x32\x1d.proto.AddResponse.ServerType\x12.\n\tserver_id\x18\x03 \x01(\x0b\x32\x1b.proto.AddResponse.ServerId\x1a\x16\n\x08ServerId\x12\n\n\x02id\x18\x01 \x01(\r\"D\n\nServerType\x12\x0b\n\x07INVALID\x10\x00\x12\n\n\x06GOLANG\x10\x01\x12\n\n\x06PYTHON\x10\x02\x12\x08\n\x04JAVA\x10\x03\x12\x07\n\x03\x43PP\x10\x04\x32\x39\n\tCalculate\x12,\n\x03\x41\x64\x64\x12\x11.proto.AddRequest\x1a\x12.proto.AddResponseb\x06proto3')
+  serialized_pb=_b('\n\x0f\x63\x61lculate.proto\x12\x05proto\"\"\n\nAddRequest\x12\t\n\x01\x61\x18\x01 \x01(\x05\x12\t\n\x01\x62\x18\x02 \x01(\x05\"\xdf\x01\n\x0b\x41\x64\x64Response\x12\x0e\n\x06result\x18\x01 \x01(\x05\x12\x32\n\x0bserver_type\x18\x02 \x01(\x0e\x32\x1d.proto.AddResponse.ServerType\x12.\n\tserver_id\x18\x03 \x01(\x0b\x32\x1b.proto.AddResponse.ServerId\x1a\x16\n\x08ServerId\x12\n\n\x02id\x18\x01 \x01(\t\"D\n\nServerType\x12\x0b\n\x07INVALID\x10\x00\x12\n\n\x06GOLANG\x10\x01\x12\n\n\x06PYTHON\x10\x02\x12\x08\n\x04JAVA\x10\x03\x12\x07\n\x03\x43PP\x10\x04\x32\x39\n\tCalculate\x12,\n\x03\x41\x64\x64\x12\x11.proto.AddRequest\x1a\x12.proto.AddResponseb\x06proto3')
 )
 
 
@@ -107,8 +107,8 @@ _ADDRESPONSE_SERVERID = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='id', full_name='proto.AddResponse.ServerId.id', index=0,
-      number=1, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
