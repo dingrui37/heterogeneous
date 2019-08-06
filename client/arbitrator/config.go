@@ -45,3 +45,4 @@ func (p *Parser) Parse(file string, v interface{}) {
 func NewParser() *Parser {
 	return &Parser{}
 }
+
