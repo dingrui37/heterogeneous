@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"log"
 	"fmt"
 	"context"
 	"github.com/docker/docker/client"
@@ -84,6 +85,7 @@ func (s *Scheduler) ContainerCreate(image, port, protocol string) error {
 		ServiceAddress: "0.0.0.0" + port,
 	})
 
+	log.Printf("Container started, id: %v, image: %v, ServicePort: %v", resp.ID, image, port)
 	return nil
 } 
 
@@ -100,6 +102,8 @@ func (s *Scheduler) ContanierRemove(containerID string) error {
 	if err != nil {
 		return err
 	}
+
+	log.Printf("Container removed, id: %v", containerID)
 
 	//删除保存的对应容器信息
 	for index, c := range s.Containers {

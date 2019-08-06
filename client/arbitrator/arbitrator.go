@@ -132,22 +132,22 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
 	//并发执行RPC调用
 	for _, addr := range a.Servers {
 		go func(address string) {
-			log.Printf("connect to %v", address)
+			log.Printf("Connect to %v", address)
 
 			conn, err := grpc.Dial(address, grpc.WithInsecure())
 			if err != nil {
-				log.Printf("cann not connect: %v", err)
+				log.Printf("Cann not connect: %v", err)
 				return
 			}
 			defer conn.Close()
 
 			c := pb.NewCalculateClient(conn)
-			ctx, cancel := context.WithTimeout(context.Background(), 2 * time.Second) //每次RPC超时时间设置为1s
+			ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second) //每次RPC超时时间设置为5s
 			defer cancel()
 			
 			r, err := c.Add(ctx, &pb.AddRequest{A: param1, B: param2}, grpc.WaitForReady(true)) //配置WaitForReady，如果失败grpc会多次retry直至超时
 			if err != nil {
-				log.Printf("could not execut add RPC: %v", err)
+				log.Printf("Could not execut add RPC: %v", err)
 				return
 			}
 		
@@ -160,7 +160,13 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
 
 	elements := make([]*Element, 0)
 	// 从channel中读取RPC的结果
-	for i := 0; i < len(a.Servers); i++ {
+	isTimeOut := false
+	for {
+		//超时或者已经读取完所有结果则直接结束
+		if isTimeOut || len(elements) == len(a.Servers) {
+			break
+		}
+
 		select {
 		case msg := <- resultChan:
 			log.Printf("Receive result from channel: %v, %v,%v", 
@@ -170,7 +176,8 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
 				ServerID:msg.ServerId.Id,
 			}
 			elements = append(elements, e)	
-		case <- time.After(time.Second): //防止读超时
+		case <- time.After(5 * time.Second): //防止读超时
+			isTimeOut = true
 		}
 	}
    
@@ -214,6 +221,8 @@ func NewArbitrator(images []string, servers []string, Policy *ArbitratePolicy) *
 			Servers:servers,
 		}
 	})
+
+	log.Printf("New sigleton Arbitrator success")
 	return a
 }
 
