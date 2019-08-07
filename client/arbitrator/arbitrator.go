@@ -59,16 +59,6 @@ func (a *Arbitrator) arbitrate(elements []*Element) (int, error) {
 		}
 	}
 
-	fmt.Printf("-----elements------\n")
-	for i,v := range elements {
-		fmt.Printf("i = %v, v = %v/%v\n", i, v.Value, v.ServerID )
-	}
-
-	fmt.Printf("-----keys------\n")
-	for i,v := range keys {
-		fmt.Printf("i = %v, v = %v\n", i, v)
-	}
-
 	//如果结果全部一致，则成功
 	//如果结果不一致
 	//  找出结果最多的出现次数，计算出占比
@@ -90,11 +80,9 @@ func (a *Arbitrator) arbitrate(elements []*Element) (int, error) {
 			}
 		}
 
-		fmt.Printf("maxCount = %v, key = %v, keys = %v\n", maxCount, key, keys)
-
 		//时间因素的考虑：运行时间越长，即RPC成功的次数越多的，越可靠，权重越高，反之新版本稳定性可能越差？
 		//失败次数分为连续失败次数、累计失败次数，使用连续失败次数具备统计效应，裁决更准确
-		if float32(maxCount) / float32(len(elements)) >= float32(a.Policy.Threshhold) {
+		if float32(maxCount) / float32(len(elements)) >= float32(a.Policy.Threshhold) / float32(100) {
 			//容器状态更新
 			for _, c := range a.Scheduler.Containers {
 				isExisted := false
@@ -117,20 +105,42 @@ func (a *Arbitrator) arbitrate(elements []*Element) (int, error) {
 			}
 
 			//判断异常容器
+			exceptionContainers := make([]*scheduler.Container, 0)
 			for _, c := range a.Scheduler.Containers {
 				if c.ContinuousFailureCount >= a.Policy.MaxFailures {
-					if err := a.Scheduler.ContanierRemove(c.ID); err != nil {
-						log.Printf("Remove container failed, reason:%s", err)
-					}
-
-					log.Printf(`Container:%v be removed, Image:%v, 
-								ServiceAddress:%v, SuccCount:%v, 
-								ContinuousFailureCount:%v, TotalFailureCount:%v`, 
-								c.ID, c.Image, 
-								c.ServiceAddress, c.SuccCount, 
-								c.ContinuousFailureCount, c.TotalFailureCount)
+					exceptionContainers = append(exceptionContainers, c)
 				}
 			}
+
+			//异常处理，杀死异常容器，镜像从可用池中移除
+			//重新创建服务，须绑定原来的地址，目前暂时从可用池中随机选取镜像
+			for _, c := range exceptionContainers {
+				if err := a.Scheduler.ContanierRemove(c.ID); err != nil {
+					log.Printf("Remove container failed, reason: %s", err)
+				}
+				
+				a.Scheduler.RemoveWorkableImage(c.Image)
+				a.Scheduler.AddExceptionImage(c.Image)
+
+				r := rand.New(rand.NewSource(time.Now().UnixNano()))
+				i := r.Intn(len(a.Scheduler.Pool.WorkableImages))
+				image := a.Scheduler.Pool.WorkableImages[i]
+				port := strings.Split(c.ServiceAddress, ":")[1]
+				if a.Policy.RestartImage == "random" {
+					if err := a.Scheduler.ContainerCreate(image, port, "tcp"); err != nil {
+						log.Fatalf("Cannot create container, image: %v, port: %v, reason:%v\n", 
+							image, port, err)
+					}
+				}
+
+				log.Printf(`Container:%v will be removed, Image:%v, 
+							ServiceAddress:%v, SuccCount:%v, 
+							ContinuousFailureCount:%v, TotalFailureCount:%v`, 
+							c.ID, c.Image, 
+							c.ServiceAddress, c.SuccCount, 
+							c.ContinuousFailureCount, c.TotalFailureCount)
+			}
+	
 			return keys[key].indexs[0], nil
 		} else {
 			return 0, fmt.Errorf("Results cannot be arbitrated")
@@ -167,15 +177,14 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
 				return
 			}
 		
-			log.Printf("Result: %v, Server Type: %v, Server Id: %v", 
-						r.Result, r.ServerType, r.ServerId)
+			log.Printf("Receive result from server : %v + %v = %v, Server Type: %v, Server Id: %v", 
+						param1, param2, r.Result, r.ServerType, r.ServerId)
 		
 			resultChan <- r //RPC执行的结果传递给channel，供其他goroutine读取
 		}(addr)
 	}
 
 	elements := make([]*Element, 0)
-	// 从channel中读取RPC的结果
 	isTimeOut := false
 	for {
 		//超时或者已经读取完所有结果则直接结束
@@ -199,7 +208,7 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
    
 	//有结果丢失或者异常
 	if len(elements) < len(a.Servers) {
-		return 0, fmt.Errorf("Result miss or exception")
+		return 0, fmt.Errorf("Result miss or exception occurred")
 	}
 
 	index, error := a.arbitrate(elements)
@@ -239,7 +248,7 @@ func NewArbitrator(images []string, servers []string, Policy *ArbitratePolicy) *
 		}
 	})
 
-	log.Printf("New sigleton Arbitrator success")
+	log.Printf("New sigleton arbitrator instance success")
 	return a
 }
 

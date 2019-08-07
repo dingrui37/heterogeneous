@@ -79,10 +79,11 @@ func (s *Scheduler) ContainerCreate(image, port, protocol string) error {
         panic(err)
 	}
 	
+	//记录创建的容器信息
 	s.Containers = append(s.Containers, &Container{
 		ID: resp.ID,
 		Image: image,
-		ServiceAddress: "0.0.0.0" + port,
+		ServiceAddress: "0.0.0.0:" + port,
 	})
 
 	log.Printf("Container started, id: %v, image: %v, ServicePort: %v", resp.ID, image, port)
@@ -103,9 +104,8 @@ func (s *Scheduler) ContanierRemove(containerID string) error {
 		return err
 	}
 
-	//删除保存的对应容器、镜像信息
+	//删除对应的容器信息
 	var containerIndex int
-	var imageIndex int
 	for index, c := range s.Containers {
 		if c.ID == containerID {
 			containerIndex = index
@@ -113,19 +113,25 @@ func (s *Scheduler) ContanierRemove(containerID string) error {
 		}
 	}
 
+	s.Containers = append(s.Containers[:containerIndex], s.Containers[containerIndex + 1:]...)
+	log.Printf("Container removed, id: %v", containerID)
+	return nil
+}
+
+func (s *Scheduler) RemoveWorkableImage(image string) {
+	var imageIndex int
 	for index, i := range s.Pool.WorkableImages {
-		if s.Containers[containerIndex].Image == i {
+		if image == i {
 			imageIndex = index
 			break
 		}
 	}
 
-	s.Containers = append(s.Containers[:containerIndex], s.Containers[containerIndex + 1:]...)
-	s.Pool.ExceptionImages = append(s.Pool.ExceptionImages, s.Pool.WorkableImages[imageIndex])
 	s.Pool.WorkableImages = append(s.Pool.WorkableImages[:imageIndex], s.Pool.WorkableImages[imageIndex + 1:]...)
-	log.Printf("Container removed, id: %v, workable images:%v, exception images:%v", 
-				containerID, s.Pool.WorkableImages, s.Pool.ExceptionImages)
-	return nil
+}
+
+func (s *Scheduler) AddExceptionImage(image string) {
+	s.Pool.ExceptionImages = append(s.Pool.ExceptionImages, image)
 }
 
 func NewScheduler(images []string) *Scheduler {
