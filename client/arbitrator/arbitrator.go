@@ -24,7 +24,7 @@ type ArbitratePolicy struct {
 type Arbitrator struct {
 	Scheduler *scheduler.Scheduler  //调度器
 	Servers []string                //服务端信息
-	Policy	ArbitratePolicy         //裁决策略信息
+	Policy	*ArbitratePolicy         //裁决策略信息
 }
 
 //通用裁决数据结构
@@ -59,12 +59,26 @@ func (a *Arbitrator) arbitrate(elements []*Element) (int, error) {
 		}
 	}
 
+	fmt.Printf("-----elements------\n")
+	for i,v := range elements {
+		fmt.Printf("i = %v, v = %v/%v\n", i, v.Value, v.ServerID )
+	}
+
+	fmt.Printf("-----keys------\n")
+	for i,v := range keys {
+		fmt.Printf("i = %v, v = %v\n", i, v)
+	}
+
 	//如果结果全部一致，则成功
 	//如果结果不一致
 	//  找出结果最多的出现次数，计算出占比
 	//    a. 如果达到阈值，则成功
 	//    b. 如果达不到阈值，则失败
 	if len(keys) == 1 {
+		for _, c := range a.Scheduler.Containers {
+			c.SuccCount++                
+			c.ContinuousFailureCount = 0
+		}
 		return 0, nil
 	} else {
 		var maxCount uint32
@@ -76,34 +90,33 @@ func (a *Arbitrator) arbitrate(elements []*Element) (int, error) {
 			}
 		}
 
+		fmt.Printf("maxCount = %v, key = %v, keys = %v\n", maxCount, key, keys)
+
 		//时间因素的考虑：运行时间越长，即RPC成功的次数越多的，越可靠，权重越高，反之新版本稳定性可能越差？
 		//失败次数分为连续失败次数、累计失败次数，使用连续失败次数具备统计效应，裁决更准确
 		if float32(maxCount) / float32(len(elements)) >= float32(a.Policy.Threshhold) {
-			for _, v := range keys[key].indexs {
-				for _, c := range a.Scheduler.Containers {
-					if elements[v].ServerID == c.ID {
-						c.SuccCount++                //累计成功次数
-						c.ContinuousFailureCount = 0 //成功一次，连续失败次数清0
-						break
-					}
-				}
-			}
-
+			//容器状态更新
 			for _, c := range a.Scheduler.Containers {
 				isExisted := false
 				for _, v := range keys[key].indexs {
-					if  elements[v].ServerID == c.ID {
+					if  strings.Contains(c.ID, elements[v].ServerID) {   //长短ID
 						isExisted = true
 						break
 					}
 				}
 
-				if !isExisted {
+				if isExisted {
+					c.SuccCount++                  //累计成功次数
+					c.ContinuousFailureCount = 0   //成功一次，连续失败次数清0
+					log.Printf("c.ID = %v success = %v/%v\n", c.ID, c.SuccCount,c.ContinuousFailureCount)
+				} else {
 					c.TotalFailureCount++          //累计失败次数
-					c.ContinuousFailureCount++	   //连续失败次数++				
+					c.ContinuousFailureCount++	   //连续失败次数++	
+					log.Printf("c.ID = %v failure = %v/%v\n", c.ID, c.TotalFailureCount,c.ContinuousFailureCount)	
 				}
 			}
 
+			//判断异常容器
 			for _, c := range a.Scheduler.Containers {
 				if c.ContinuousFailureCount >= a.Policy.MaxFailures {
 					if err := a.Scheduler.ContanierRemove(c.ID); err != nil {
@@ -142,10 +155,13 @@ func (a *Arbitrator) Add(param1, param2 int32) (int32, error) {
 			defer conn.Close()
 
 			c := pb.NewCalculateClient(conn)
-			ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second) //每次RPC超时时间设置为5s
+			
+			//每次RPC超时时间设置为5s
+			ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second) 
 			defer cancel()
 			
-			r, err := c.Add(ctx, &pb.AddRequest{A: param1, B: param2}, grpc.WaitForReady(true)) //配置WaitForReady，如果失败grpc会多次retry直至超时
+			//配置WaitForReady，如果失败grpc会多次retry直至超时
+			r, err := c.Add(ctx, &pb.AddRequest{A: param1, B: param2}, grpc.WaitForReady(true)) 
 			if err != nil {
 				log.Printf("Could not execut add RPC: %v", err)
 				return
@@ -219,6 +235,7 @@ func NewArbitrator(images []string, servers []string, Policy *ArbitratePolicy) *
 				Containers:make([]*scheduler.Container, 0),
 			},
 			Servers:servers,
+			Policy:Policy,
 		}
 	})
 

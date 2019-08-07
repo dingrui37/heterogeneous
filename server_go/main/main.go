@@ -21,7 +21,18 @@ func init() {
 
 func (s *server) Add(ctx context.Context, in *pb.AddRequest) (*pb.AddResponse, error) {
 	log.Printf("Received: %v %v", in.A, in.B)
-	result := in.A + in.B
+
+	//伪造边界条件，当参数A是2的倍数，参数B是3的倍数时，返回错误结果
+    //build有bug的镜像时，放开下面的代码
+	var result int32
+	if in.A % 2 == 0 && in.B % 3 == 0 {
+		result = 0
+	} else {
+		result = in.A + in.B
+	}
+
+	//正常镜像代码
+	//result := in.A + in.B
 	hostname, _ := os.Hostname()
 	return &pb.AddResponse{
 			Result: result,
@@ -44,3 +55,7 @@ func main() {
 	}
 }
 
+//1. 编译生成二进制文件
+//     go build -o calculate main/main.go
+//2. 制作docker镜像
+//    docker build -t heterogeneous_cpp:v1.0.0 .

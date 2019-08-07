@@ -36,7 +36,7 @@ func ArbitratorInit(cfgFile string) {
 //export ArbitratorAdd
 func ArbitratorAdd(param1, param2 int32) {
 	if r, err := a.Add(param1, param2); err != nil {
-		log.Println("Call add RPC failed")
+		log.Println("Call add RPC failed, reason = ",  err)
 	} else {
 		log.Println("Result = ", r)
 	}
@@ -65,7 +65,7 @@ func main() {
 
 	//RPC调用
 	if r, err := a.Add(1, 2); err != nil {
-		log.Println("Call add RPC failed")
+		log.Println("Call add RPC failed, reason = ", err)
 	} else {
 		log.Println("Result = ", r)
 	}

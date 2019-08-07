@@ -103,16 +103,28 @@ func (s *Scheduler) ContanierRemove(containerID string) error {
 		return err
 	}
 
-	log.Printf("Container removed, id: %v", containerID)
-
-	//删除保存的对应容器信息
+	//删除保存的对应容器、镜像信息
+	var containerIndex int
+	var imageIndex int
 	for index, c := range s.Containers {
 		if c.ID == containerID {
-			s.Containers = append(s.Containers[:index], s.Containers[index + 1:]...)
+			containerIndex = index
 			break
 		}
 	}
 
+	for index, i := range s.Pool.WorkableImages {
+		if s.Containers[containerIndex].Image == i {
+			imageIndex = index
+			break
+		}
+	}
+
+	s.Containers = append(s.Containers[:containerIndex], s.Containers[containerIndex + 1:]...)
+	s.Pool.ExceptionImages = append(s.Pool.ExceptionImages, s.Pool.WorkableImages[imageIndex])
+	s.Pool.WorkableImages = append(s.Pool.WorkableImages[:imageIndex], s.Pool.WorkableImages[imageIndex + 1:]...)
+	log.Printf("Container removed, id: %v, workable images:%v, exception images:%v", 
+				containerID, s.Pool.WorkableImages, s.Pool.ExceptionImages)
 	return nil
 }
 
